@@ -204,6 +204,39 @@ async def get_total_dhikar_count(session: AsyncSession, dhikar_type_id: int) -> 
     
     return total or 0, title
 
+async def delete_last_dhikar_entry(session: AsyncSession, user_id: int, dhikar_type_id: int, dhikar_count: int) -> bool:
+    """
+    Delete the most recent dhikar entry for a specific user and dhikar type if it matches the count.
+    
+    Args:
+        session: AsyncSession - The database session
+        user_id: int - The ID of the user
+        dhikar_type_id: int - The ID of the dhikar type
+        dhikar_count: int - The count to match for deletion
+        
+    Returns:
+        bool: True if an entry was deleted, False if no matching entry was found or count didn't match
+    """
+    # First get the latest entry
+    result = await session.execute(
+        select(DhikarEntry)
+        .where(
+            DhikarEntry.user_id == user_id,
+            DhikarEntry.dhikar_type_id == dhikar_type_id,
+            DhikarEntry.dhikar_count == dhikar_count  # Add count condition
+        )
+        .order_by(DhikarEntry.entry_id.desc())
+        .limit(1)
+    )
+    
+    entry = result.scalar_one_or_none()
+    if entry is None:
+        return False
+        
+    await session.delete(entry)
+    await session.commit()
+    return True
+
 # if __name__ == "__main__":
 #     import asyncio
 #     asyncio.run(test_create_dhikar_entry())
