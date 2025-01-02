@@ -237,6 +237,47 @@ async def delete_last_dhikar_entry(session: AsyncSession, user_id: int, dhikar_t
     await session.commit()
     return True
 
+async def get_top_contributors(session: AsyncSession, dhikar_type_id: int, limit: int = 10) -> dict:
+    """
+    Get the top contributors for a specific dhikar type.
+    
+    Args:
+        session: AsyncSession - The database session
+        dhikar_type_id: int - The ID of the dhikar type
+        limit: int - Maximum number of contributors to return (default: 10)
+        
+    Returns:
+        dict: Dictionary containing dhikar_title and list of contributors with their ranks and counts
+    """
+    # First get the dhikar title
+    title_result = await session.execute(
+        select(DhikarType.dhikar_title)
+        .where(DhikarType.id == dhikar_type_id)
+    )
+    dhikar_title = title_result.scalar_one_or_none()
+    
+    # Get contributors data
+    result = await session.execute(
+        select(
+            DhikarEntry.user_id,
+            func.sum(DhikarEntry.dhikar_count).label('total_dhikar')
+        )
+        .where(DhikarEntry.dhikar_type_id == dhikar_type_id)
+        .group_by(DhikarEntry.user_id)
+        .order_by(func.sum(DhikarEntry.dhikar_count).desc())
+        .limit(limit)
+    )
+    
+    contributors = [
+        {"rank": idx + 1, "user_id": row.user_id, "total_dhikar": row.total_dhikar}
+        for idx, row in enumerate(result.all())
+    ]
+    
+    return {
+        "dhikar_title": dhikar_title,
+        "contributors": contributors
+    }
+
 # if __name__ == "__main__":
 #     import asyncio
 #     asyncio.run(test_create_dhikar_entry())

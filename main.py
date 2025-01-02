@@ -47,6 +47,60 @@ async def get_username_by_id(bot: Bot, user_id: int) -> str:
     except Exception:
         return f"User{user_id}"  # Fallback if user not found or other errors
 
+# Add this command handler after the existing handlers
+@dp.message(lambda message: message.text == "/leader_board")
+async def leader_board(message: Message):
+    user_id = message.from_user.id
+    if user_id not in ADMIN_USER_IDS:  # Check if user is admin
+        await message.delete()  # Delete the command message if not admin
+        return
+        
+    group_id = message.chat.id if message.chat.type != "private" else None
+    topic_id = message.message_thread_id if message.message_thread_id else None
+
+    if group_id is None or topic_id is None:
+        return
+
+    async with database.get_session() as session:
+        dhikar_type_id = await database.get_dhikar_type_id(session, group_id, topic_id)
+        if dhikar_type_id is None:
+            return
+
+        result = await database.get_top_contributors(session, dhikar_type_id)
+        
+        if not result["contributors"]:
+            await message.reply("No contributions yet!")
+            return
+
+        # Format the leaderboard message with three columns
+        leaderboard_text = "🏆 𝗟𝗘𝗔𝗗𝗘𝗥𝗕𝗢𝗔𝗥𝗗 🏆\n"
+        leaderboard_text += "\n"
+        leaderboard_text += f"📿 {result['dhikar_title']} 📿\n\n"
+        
+        # Header with exact spacing
+        leaderboard_text += "𝗥𝗮𝗻𝗸    𝗨𝘀𝗲𝗿      𝗗𝗵𝗶𝗸𝗿\n"
+
+        medals = ["🥇", "🥈", "🥉"]
+        
+        for contributor in result["contributors"]:
+            username = await get_username_by_id(bot, contributor["user_id"])
+            rank = contributor['rank']
+            
+            # Adjust username length and padding (20 spaces)
+            username = (username[:17] + '...') if len(username) > 17 else username
+            
+            
+            # Rank display (5 spaces)
+            rank_display = medals[rank - 1] if rank <= 3 else str(rank)
+            
+            
+            # Count with exactly 5 spaces, right-aligned with spaces
+            count = str(contributor['total_dhikar'])
+            
+            leaderboard_text += f"{rank_display} | {username} ⮕ {count}\n\n"
+
+
+        await message.reply(leaderboard_text)
 
 # Define the message handler
 @dp.message()
@@ -115,6 +169,9 @@ async def echo(message: Message):
             else:
                 # Delete invalid message from non-admin users
                 await message.delete()
+
+
+
 
 
 
