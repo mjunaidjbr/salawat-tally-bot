@@ -43,7 +43,14 @@ keyboard_reply = ReplyKeyboardMarkup(
 async def get_username_by_id(bot: Bot, user_id: int) -> str:
     try:
         chat = await bot.get_chat(user_id)
-        return chat.username or f"User{user_id}"  # Returns username if exists, otherwise returns "User<id>"
+        if chat.first_name:
+            full_name = chat.first_name
+            if chat.last_name:
+                full_name += f" {chat.last_name}"
+            return full_name
+        elif chat.username:
+            return chat.username
+        return f"User{user_id}"  # Fallback if no name or username
     except Exception:
         return f"User{user_id}"  # Fallback if user not found or other errors
 
@@ -53,6 +60,11 @@ async def leader_board(message: Message):
     user_id = message.from_user.id
     if user_id not in ADMIN_USER_IDS:  # Check if user is admin
         await message.delete()  # Delete the command message if not admin
+        await bot.send_message(
+            chat_id=group_id,
+            text=f"Imtiaz Noor removed this message",
+            message_thread_id=topic_id
+        )
         return
         
     group_id = message.chat.id if message.chat.type != "private" else None
@@ -78,7 +90,7 @@ async def leader_board(message: Message):
         leaderboard_text += f"📿 {result['dhikar_title']} 📿\n\n"
         
         # Header with exact spacing
-        leaderboard_text += "𝗥𝗮𝗻𝗸    𝗨𝘀𝗲𝗿      𝗗𝗵𝗶𝗸𝗿\n"
+        leaderboard_text += "𝗥𝐚𝐧𝐤    𝐔𝐬𝐞𝐫      𝐂𝐨𝐮𝐧𝐭\n"
 
         medals = ["🥇", "🥈", "🥉"]
         
@@ -130,6 +142,11 @@ async def echo(message: Message):
             except ValueError:
                 # Delete invalid message from non-admin users
                 await message.delete()
+                await bot.send_message(
+                    chat_id=group_id,
+                    text=f"Imtiaz Noor removed this message",
+                    message_thread_id=topic_id
+                )
                 return
         else:
             try:
@@ -146,13 +163,18 @@ async def echo(message: Message):
             # await message.reply(f"You added {dhikar_count} to {dhikar_title}\nTotal count: {total_dhikar}", reply_markup=keyboard_reply)
             username = await get_username_by_id(bot, user_id)
             await message.reply(
-                f"@{username} added {dhikar_count} to {dhikar_title}\nTotal count: {total_dhikar}", 
+                f"{username} added {dhikar_count} to {dhikar_title}\nTotal count: {total_dhikar}", 
                 reply_markup=keyboard_reply
             )
         else:
             if dhikar_count == 0:
                 # Delete invalid message from non-admin users
                 await message.delete()
+                await bot.send_message(
+                    chat_id=group_id,
+                    text=f"Imtiaz Noor removed this message",
+                    message_thread_id=topic_id
+                )
                 return
          
             dhikar_count = int(int(message.text) * -1)
@@ -169,6 +191,12 @@ async def echo(message: Message):
             else:
                 # Delete invalid message from non-admin users
                 await message.delete()
+                await bot.send_message(
+                    chat_id=group_id,
+                    text=f"Imtiaz Noor removed this message",
+                    message_thread_id=topic_id
+                )
+                
 
 
 
